@@ -1,0 +1,20 @@
+{
+  "settings_version": "0.0.6",
+  "datasets_dir": "E:\\project\\vqa_kltn\\datasets",
+  "weights_dir": "weights",
+  "runs_dir": "runs",
+  "uuid": "7cf9f1eddbed0639c5a523dac8ad0a8c6cdcf6316477cedb3a2c75cef686a733",
+  "sync": true,
+  "api_key": "",
+  "openai_api_key": "",
+  "clearml": true,
+  "comet": true,
+  "dvc": true,
+  "hub": true,
+  "mlflow": true,
+  "neptune": true,
+  "raytune": true,
+  "tensorboard": true,
+  "wandb": true,
+  "vscode_msg": true
+}
