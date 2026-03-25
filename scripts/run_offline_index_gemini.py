@@ -22,6 +22,7 @@ from src.database import (
 )
 from src.extract.document_pipeline import expand_regions_with_lines, run_document_pipeline
 from src.extract.region_to_chunk import build_layout_regions
+from src.utils.config import DEFAULT_QWEN_EMBED_MODEL
 from src.utils.io import resolve_existing_file, resolve_existing_path, save_json
 
 
@@ -47,7 +48,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gemini-max-output-tokens", type=int, default=1024, help="Max output tokens for Gemini region analysis.")
     parser.add_argument("--gemini-temperature", type=float, default=0.1, help="Temperature for Gemini region analysis.")
     parser.add_argument("--gemini-crops-dir", type=Path, default=None, help="Optional directory to save region crops sent to Gemini.")
-    parser.add_argument("--embed-model", default="Qwen/Qwen3-VL-Embedding-2B", help="Embedding model used to encode graph node contexts.")
+    parser.add_argument("--embed-model", default=DEFAULT_QWEN_EMBED_MODEL, help="Embedding model used to encode graph node contexts.")
     parser.add_argument("--embed-device", default="auto", help="Embedding device: auto, cuda, or cpu.")
     parser.add_argument("--embed-dtype", default="auto", help="Embedding dtype: auto, float16, bfloat16, or float32.")
     parser.add_argument("--embed-batch-size", type=int, default=4, help="Batch size for node embedding.")
@@ -213,3 +214,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

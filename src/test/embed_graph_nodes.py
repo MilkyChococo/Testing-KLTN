@@ -15,6 +15,7 @@ from src.database import (
     load_graph_payload,
     save_embedding_store,
 )
+from src.utils.config import DEFAULT_QWEN_EMBED_MODEL
 from src.utils.io import resolve_existing_file, save_json
 
 
@@ -35,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--embed-model",
-        default="Qwen/Qwen3-VL-Embedding-2B",
+        default=DEFAULT_QWEN_EMBED_MODEL,
         help="Embedding model used to encode graph node contexts.",
     )
     parser.add_argument("--embed-device", default="auto", help="Embedding device: auto, cuda, or cpu.")
@@ -109,3 +110,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

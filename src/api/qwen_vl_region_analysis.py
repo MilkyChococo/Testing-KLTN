@@ -8,10 +8,11 @@ from typing import Any
 
 from PIL import Image
 
+from src.utils.config import DEFAULT_QWEN_VL_MODEL
 from src.utils.prompt import get_qwen_region_prompt
 
 
-DEFAULT_QWEN_MODEL = "Qwen/Qwen2.5-VL-3B-Instruct"
+DEFAULT_QWEN_MODEL = DEFAULT_QWEN_VL_MODEL
 DEFAULT_SUPPORTED_LABELS = ("table", "figure", "chart", "image")
 
 _MODEL_CACHE: dict[tuple[str, str, str], tuple[Any, Any, str]] = {}

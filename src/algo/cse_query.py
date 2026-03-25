@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 
 from src.database import Qwen3VLEmbeddingConfig, Qwen3VLNodeEmbedder
+from src.utils.config import DEFAULT_QWEN_EMBED_MODEL
 
 from .cse_indexing import load_embedding_store, normalized_cosine_similarity
 
@@ -47,7 +48,7 @@ def build_query_relevance_scores(
     query: str,
     embeddings: np.ndarray,
     meta: list[dict[str, Any]],
-    model: str = "Qwen/Qwen3-VL-Embedding-2B",
+    model: str = DEFAULT_QWEN_EMBED_MODEL,
     device: str = "auto",
     dtype: str = "auto",
     max_length: int = 8192,
@@ -434,7 +435,7 @@ def run_basic_cse_from_store(
     max_edges: int = 200,
     allowed_seed_node_types: tuple[str, ...] | None = None,
     allowed_relations: tuple[str, ...] | None = None,
-    embed_model: str = "Qwen/Qwen3-VL-Embedding-2B",
+    embed_model: str = DEFAULT_QWEN_EMBED_MODEL,
     embed_device: str = "auto",
     embed_dtype: str = "auto",
     embed_max_length: int = 8192,
@@ -511,7 +512,7 @@ def run_multi_subgraph_cse_from_store(
     max_edges: int = 200,
     allowed_seed_node_types: tuple[str, ...] | None = None,
     allowed_relations: tuple[str, ...] | None = None,
-    embed_model: str = "Qwen/Qwen3-VL-Embedding-2B",
+    embed_model: str = DEFAULT_QWEN_EMBED_MODEL,
     embed_device: str = "auto",
     embed_dtype: str = "auto",
     embed_max_length: int = 8192,

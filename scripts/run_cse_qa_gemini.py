@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.algo.cse_query import run_multi_subgraph_cse_from_store, save_cse_subgraph
 from src.api import DEFAULT_GEMINI_MODEL, answer_subgraph_with_gemini
+from src.utils.config import DEFAULT_QWEN_EMBED_MODEL
 from src.utils.fallback import backfill_document_from_sibling_graph
 from src.utils.io import resolve_existing_dir, save_json
 
@@ -30,7 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-edges", type=int, default=200, help="Maximum number of edges in each expanded subgraph.")
     parser.add_argument("--seed-node-types", default="line,chunk,region,fine", help="Comma-separated node types allowed as initial seeds.")
     parser.add_argument("--allowed-relations", default="", help="Optional comma-separated whitelist of edge relations for expansion.")
-    parser.add_argument("--embed-model", default="Qwen/Qwen3-VL-Embedding-2B", help="Embedding model used for the query.")
+    parser.add_argument("--embed-model", default=DEFAULT_QWEN_EMBED_MODEL, help="Embedding model used for the query.")
     parser.add_argument("--embed-device", default="auto", help="Embedding device: auto, cuda, or cpu.")
     parser.add_argument("--embed-dtype", default="auto", help="Embedding dtype: auto, float16, bfloat16, or float32.")
     parser.add_argument("--embed-max-length", type=int, default=8192, help="Maximum token length for query embedding.")
@@ -103,3 +104,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

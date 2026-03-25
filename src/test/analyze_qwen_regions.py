@@ -17,6 +17,7 @@ from src.extract.doclayout_yolo import (
     run_doclayout_yolo,
 )
 from src.extract.document_pipeline import load_layout_detections
+from src.utils.config import DEFAULT_QWEN_VL_MODEL
 
 DEFAULT_OCR_DIR = PROJECT_ROOT / "dataset" / "spdocvqa" / "spdocvqa_ocr"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "artifacts"
@@ -66,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--qwen-model",
-        default="Qwen/Qwen2.5-VL-3B-Instruct",
+        default=DEFAULT_QWEN_VL_MODEL,
         help="Qwen2.5-VL model name.",
     )
     parser.add_argument(
@@ -197,3 +198,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

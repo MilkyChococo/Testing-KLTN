@@ -20,6 +20,7 @@ from src.database import (
     save_graph_payload,
 )
 from src.extract.document_pipeline import run_document_pipeline
+from src.utils.config import DEFAULT_QWEN_EMBED_MODEL, DEFAULT_QWEN_VL_MODEL
 from src.utils.io import resolve_existing_file, resolve_existing_path, save_json
 
 
@@ -59,7 +60,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Run Qwen2.5-VL on detected regions before graph export.",
     )
-    parser.add_argument("--qwen-model", default="Qwen/Qwen2.5-VL-3B-Instruct", help="Qwen2.5-VL model name used for region analysis.")
+    parser.add_argument("--qwen-model", default=DEFAULT_QWEN_VL_MODEL, help="Qwen2.5-VL model name used for region analysis.")
     parser.add_argument("--qwen-device", default="auto", help="Qwen region-analysis device: auto, cuda, or cpu.")
     parser.add_argument("--qwen-dtype", default="auto", help="Qwen region-analysis dtype: auto, float16, bfloat16, or float32.")
     parser.add_argument("--qwen-max-new-tokens", type=int, default=1024, help="Max generated tokens for Qwen region analysis.")
@@ -67,7 +68,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--qwen-crops-dir", type=Path, default=None, help="Optional directory to save region crops sent to Qwen.")
     parser.add_argument(
         "--embed-model",
-        default="Qwen/Qwen3-VL-Embedding-2B",
+        default=DEFAULT_QWEN_EMBED_MODEL,
         help="Embedding model used to encode graph node contexts.",
     )
     parser.add_argument("--embed-device", default="auto", help="Embedding device: auto, cuda, or cpu.")
@@ -226,3 +227,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

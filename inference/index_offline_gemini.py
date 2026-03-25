@@ -22,6 +22,7 @@ from src.database import (
 )
 from src.extract.document_pipeline import expand_regions_with_lines, run_document_pipeline
 from src.extract.region_to_chunk import build_layout_regions
+from src.utils.config import DEFAULT_QWEN_EMBED_MODEL
 from src.utils.io import resolve_existing_file, resolve_existing_path, save_json
 
 
@@ -98,7 +99,7 @@ def ensure_offline_store_gemini(
     gemini_max_output_tokens: int = 1024,
     gemini_temperature: float = 0.1,
     gemini_crops_dir: str | Path | None = None,
-    embed_model: str = "Qwen/Qwen3-VL-Embedding-2B",
+    embed_model: str = DEFAULT_QWEN_EMBED_MODEL,
     embed_device: str = "auto",
     embed_dtype: str = "auto",
     embed_batch_size: int = 4,
@@ -236,7 +237,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gemini-max-output-tokens", type=int, default=1024, help="Max region-analysis output tokens.")
     parser.add_argument("--gemini-temperature", type=float, default=0.1, help="Gemini temperature for region analysis.")
     parser.add_argument("--gemini-crops-dir", type=Path, default=None, help="Optional directory to save Gemini crops.")
-    parser.add_argument("--embed-model", default="Qwen/Qwen3-VL-Embedding-2B", help="Embedding model.")
+    parser.add_argument("--embed-model", default=DEFAULT_QWEN_EMBED_MODEL, help="Embedding model.")
     parser.add_argument("--embed-device", default="auto", help="Embedding device.")
     parser.add_argument("--embed-dtype", default="auto", help="Embedding dtype.")
     parser.add_argument("--embed-batch-size", type=int, default=4, help="Embedding batch size.")
@@ -286,3 +287,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

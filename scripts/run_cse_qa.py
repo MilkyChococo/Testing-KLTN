@@ -11,6 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.algo.cse_query import run_multi_subgraph_cse_from_store, save_cse_subgraph
 from src.api.qwen_vl_answering import answer_subgraph_with_qwen
 from src.api.qwen_vl_region_analysis import DEFAULT_QWEN_MODEL
+from src.utils.config import DEFAULT_QWEN_EMBED_MODEL
 from src.utils.fallback import backfill_document_from_sibling_graph
 from src.utils.io import resolve_existing_dir, save_json
 
@@ -48,7 +49,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--embed-model",
-        default="Qwen/Qwen3-VL-Embedding-2B",
+        default=DEFAULT_QWEN_EMBED_MODEL,
         help="Embedding model used for the query.",
     )
     parser.add_argument("--embed-device", default="auto", help="Embedding device: auto, cuda, or cpu.")
@@ -143,3 +144,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

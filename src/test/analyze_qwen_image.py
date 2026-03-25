@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.api.qwen_vl_region_analysis import analyze_region_with_qwen
+from src.utils.config import DEFAULT_QWEN_VL_MODEL
 
 
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "artifacts" / "qwen"
@@ -34,7 +35,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--qwen-model",
-        default="Qwen/Qwen2.5-VL-3B-Instruct",
+        default=DEFAULT_QWEN_VL_MODEL,
         help="Qwen2.5-VL model name.",
     )
     parser.add_argument(
@@ -147,3 +148,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

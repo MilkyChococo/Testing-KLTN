@@ -19,6 +19,7 @@ from inference.index_offline_gemini import (
 )
 from src.algo.cse_query import run_multi_subgraph_cse_from_store
 from src.api import DEFAULT_GEMINI_MODEL, answer_subgraph_with_gemini
+from src.utils.config import DEFAULT_QWEN_EMBED_MODEL
 from src.utils.fallback import backfill_document_from_sibling_graph
 from src.utils.io import load_json, save_json
 
@@ -74,7 +75,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gemini-max-output-tokens", type=int, default=1024, help="Max output tokens for region analysis.")
     parser.add_argument("--gemini-temperature", type=float, default=0.1, help="Temperature for region analysis.")
     parser.add_argument("--gemini-crops-dir", type=Path, default=None, help="Optional directory to save Gemini region crops.")
-    parser.add_argument("--embed-model", default="Qwen/Qwen3-VL-Embedding-2B", help="Embedding model for nodes and queries.")
+    parser.add_argument("--embed-model", default=DEFAULT_QWEN_EMBED_MODEL, help="Embedding model for nodes and queries.")
     parser.add_argument("--embed-device", default="auto", help="Embedding device.")
     parser.add_argument("--embed-dtype", default="auto", help="Embedding dtype.")
     parser.add_argument("--embed-batch-size", type=int, default=4, help="Embedding batch size.")
@@ -254,3 +255,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

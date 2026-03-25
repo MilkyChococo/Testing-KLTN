@@ -10,11 +10,11 @@ from typing import Any
 from PIL import Image
 
 from src.api.qwen_vl_region_analysis import crop_detection_region
-from src.utils.config import PROJECT_ROOT
+from src.utils.config import DEFAULT_GEMINI_MODEL as DEFAULT_GEMINI_MODEL_NAME, PROJECT_ROOT
 from src.utils.prompt import get_qwen_region_prompt
 
 
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = DEFAULT_GEMINI_MODEL_NAME
 DEFAULT_SUPPORTED_LABELS = ("table", "figure", "chart", "image")
 
 

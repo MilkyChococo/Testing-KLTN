@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.utils.config import PROJECT_ROOT
+from src.utils.config import DEFAULT_QWEN_EMBED_MODEL, PROJECT_ROOT
 
 
 @dataclass(slots=True)
 class Qwen3VLEmbeddingConfig:
-    model: str = "Qwen/Qwen3-VL-Embedding-2B"
+    model: str = DEFAULT_QWEN_EMBED_MODEL
     device: str = "auto"
     dtype: str = "auto"
     batch_size: int = 8

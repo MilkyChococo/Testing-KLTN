@@ -7,6 +7,19 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
+@dataclass(slots=True, frozen=True)
+class ModelSelectionConfig:
+    qwen_vl_model: str = "Qwen/Qwen2.5-VL-3B-Instruct"
+    qwen_embedding_model: str = "Qwen/Qwen3-VL-Embedding-2B"
+    gemini_model: str = "gemini-2.5-flash"
+
+
+DEFAULT_MODEL_CONFIG = ModelSelectionConfig()
+DEFAULT_QWEN_VL_MODEL = DEFAULT_MODEL_CONFIG.qwen_vl_model
+DEFAULT_QWEN_EMBED_MODEL = DEFAULT_MODEL_CONFIG.qwen_embedding_model
+DEFAULT_GEMINI_MODEL = DEFAULT_MODEL_CONFIG.gemini_model
+
+
 @dataclass(slots=True)
 class QueryRequestConfig:
     topk: int = 10
@@ -43,7 +56,7 @@ class EmbeddingConfig:
 
 @dataclass(slots=True)
 class QwenVLConfig:
-    model: str = "Qwen/Qwen2.5-VL-3B-Instruct"
+    model: str = DEFAULT_QWEN_VL_MODEL
     device: str = "auto"
     dtype: str = "auto"
     temperature: float = 0.1
