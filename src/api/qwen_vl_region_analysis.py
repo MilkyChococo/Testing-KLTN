@@ -152,6 +152,44 @@ def _dtype_name(dtype: torch.dtype) -> str:
     return "float32"
 
 
+def _resolve_qwen_model_class(model_id: str) -> Any:
+    try:
+        import transformers
+    except ImportError as exc:
+        raise RuntimeError(
+            "Qwen region analysis requires transformers with Qwen-VL support."
+        ) from exc
+
+    model_name = model_id.strip().lower()
+    qwen25_cls = getattr(transformers, "Qwen2_5_VLForConditionalGeneration", None)
+    qwen3_cls = getattr(transformers, "Qwen3VLForConditionalGeneration", None)
+
+    if "qwen3-vl" in model_name:
+        if qwen3_cls is None:
+            raise RuntimeError(
+                "This environment does not provide Qwen3VLForConditionalGeneration. "
+                "Install a transformers version with Qwen3-VL support."
+            )
+        return qwen3_cls
+
+    if "qwen2.5-vl" in model_name:
+        if qwen25_cls is None:
+            raise RuntimeError(
+                "This environment does not provide Qwen2_5_VLForConditionalGeneration. "
+                "Install a transformers version with Qwen2.5-VL support."
+            )
+        return qwen25_cls
+
+    if qwen3_cls is not None:
+        return qwen3_cls
+    if qwen25_cls is not None:
+        return qwen25_cls
+
+    raise RuntimeError(
+        "No supported Qwen-VL conditional generation class was found in transformers."
+    )
+
+
 def _load_model_and_processor(
     model_id: str = DEFAULT_QWEN_MODEL,
     device: str = "auto",
@@ -170,11 +208,13 @@ def _load_model_and_processor(
         return cached
 
     try:
-        from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+        from transformers import AutoProcessor
     except ImportError as exc:
         raise RuntimeError(
-            "Qwen region analysis requires transformers with Qwen2.5-VL support."
+            "Qwen region analysis requires transformers with Qwen-VL support."
         ) from exc
+
+    model_class = _resolve_qwen_model_class(model_id)
 
     print(f"[Qwen] Loading processor: {model_id}", flush=True)
     processor = AutoProcessor.from_pretrained(
@@ -188,7 +228,7 @@ def _load_model_and_processor(
         flush=True,
     )
     try:
-        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+        model = model_class.from_pretrained(
             model_id,
             torch_dtype=resolved_dtype,
             trust_remote_code=True,
@@ -215,26 +255,156 @@ def _load_model_and_processor(
 
 
 def _build_model_inputs(processor: Any, image: Image.Image, prompt: str) -> dict[str, Any]:
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {"type": "image"},
-                {"type": "text", "text": prompt},
-            ],
-        }
-    ]
-    chat_text = processor.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True,
-    )
-    return processor(
-        text=[chat_text],
+    return _build_model_inputs_batch(
+        processor=processor,
         images=[image],
+        prompts=[prompt],
+    )
+
+
+def _build_model_inputs_batch(
+    processor: Any,
+    images: list[Image.Image],
+    prompts: list[str],
+) -> dict[str, Any]:
+    if len(images) != len(prompts):
+        raise ValueError("The number of images and prompts must match for batch Qwen analysis.")
+
+    chat_texts: list[str] = []
+    for prompt in prompts:
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image"},
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ]
+        chat_texts.append(
+            processor.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+        )
+
+    return processor(
+        text=chat_texts,
+        images=images,
         padding=True,
         return_tensors="pt",
     )
+
+
+def _build_generate_kwargs(max_new_tokens: int, temperature: float) -> dict[str, Any]:
+    do_sample = temperature > 0.0
+    generate_kwargs: dict[str, Any] = {
+        "max_new_tokens": max_new_tokens,
+        "do_sample": do_sample,
+    }
+    if do_sample:
+        generate_kwargs["temperature"] = temperature
+    return generate_kwargs
+
+
+def _decode_generated_texts(
+    processor: Any,
+    generated_ids: Any,
+    inputs: dict[str, Any],
+) -> list[str]:
+    prompt_length = int(inputs["input_ids"].shape[1])
+    generated_trimmed = generated_ids[:, prompt_length:]
+    return [
+        item.strip()
+        for item in processor.batch_decode(
+            generated_trimmed,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=False,
+        )
+    ]
+
+
+def analyze_regions_batch_with_qwen(
+    images: list[Image.Image],
+    region_ids: list[str],
+    labels: list[str],
+    ocr_texts: list[str] | None = None,
+    model: str = DEFAULT_QWEN_MODEL,
+    device: str = "auto",
+    dtype: str = "auto",
+    max_new_tokens: int = 1024,
+    temperature: float = 0.1,
+) -> list[QwenRegionAnalysis]:
+    if not images:
+        return []
+    if not (len(images) == len(region_ids) == len(labels)):
+        raise ValueError("images, region_ids, and labels must have the same length.")
+
+    ocr_texts = ocr_texts or [""] * len(images)
+    if len(ocr_texts) != len(images):
+        raise ValueError("ocr_texts must have the same length as images when provided.")
+
+    torch = _torch()
+    processor, qwen_model, resolved_device = _load_model_and_processor(
+        model_id=model,
+        device=device,
+        dtype=dtype,
+    )
+    prompts = [
+        get_qwen_region_prompt(label=label, ocr_text=ocr_text)
+        for label, ocr_text in zip(labels, ocr_texts)
+    ]
+
+    joined_region_ids = ", ".join(region_ids)
+    print(f"[Qwen] Building batch inputs for regions: {joined_region_ids}.", flush=True)
+    inputs = _build_model_inputs_batch(
+        processor=processor,
+        images=images,
+        prompts=prompts,
+    )
+    inputs = {
+        key: value.to(resolved_device) if hasattr(value, "to") else value
+        for key, value in inputs.items()
+    }
+
+    print(f"[Qwen] Generating batch output for regions: {joined_region_ids}.", flush=True)
+    with torch.inference_mode():
+        generated_ids = qwen_model.generate(
+            **inputs,
+            **_build_generate_kwargs(
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+            ),
+        )
+
+    raw_texts = _decode_generated_texts(
+        processor=processor,
+        generated_ids=generated_ids,
+        inputs=inputs,
+    )
+
+    analyses: list[QwenRegionAnalysis] = []
+    for region_id, label, ocr_text, raw_text in zip(region_ids, labels, ocr_texts, raw_texts):
+        payload = _parse_payload_from_text(raw_text=raw_text, label=label)
+        analyses.append(
+            QwenRegionAnalysis(
+                region_id=region_id,
+                label=label,
+                model=model,
+                region_type=str(payload.get("region_type", _canonical_label(label))).strip(),
+                title_or_topic=str(payload.get("title_or_topic", "")).strip(),
+                summary=str(payload.get("summary", "")).strip(),
+                structured_content=str(payload.get("structured_content", "")).strip(),
+                key_points=[str(item).strip() for item in payload.get("key_points", []) if str(item).strip()],
+                visible_text=[str(item).strip() for item in payload.get("visible_text", []) if str(item).strip()],
+                raw_response_text=raw_text,
+                raw_payload=payload,
+            )
+        )
+
+    print(f"[Qwen] Finished batch for regions: {joined_region_ids}.", flush=True)
+    return analyses
 
 
 def _extract_json_payload(raw_text: str) -> dict[str, Any]:
@@ -284,56 +454,18 @@ def analyze_region_with_qwen(
     max_new_tokens: int = 1024,
     temperature: float = 0.1,
 ) -> QwenRegionAnalysis:
-    torch = _torch()
     print(f"[Qwen] Preparing analysis for region '{region_id}' [{label}].", flush=True)
-    processor, qwen_model, resolved_device = _load_model_and_processor(
-        model_id=model,
+    return analyze_regions_batch_with_qwen(
+        images=[image],
+        region_ids=[region_id],
+        labels=[label],
+        ocr_texts=[ocr_text],
+        model=model,
         device=device,
         dtype=dtype,
-    )
-    prompt = get_qwen_region_prompt(label=label, ocr_text=ocr_text)
-    print(f"[Qwen] Building model inputs for region '{region_id}'.", flush=True)
-    inputs = _build_model_inputs(processor=processor, image=image, prompt=prompt)
-    inputs = {
-        key: value.to(resolved_device) if hasattr(value, "to") else value
-        for key, value in inputs.items()
-    }
-
-    do_sample = temperature > 0.0
-    generate_kwargs: dict[str, Any] = {
-        "max_new_tokens": max_new_tokens,
-        "do_sample": do_sample,
-    }
-    if do_sample:
-        generate_kwargs["temperature"] = temperature
-
-    print(f"[Qwen] Generating output for region '{region_id}'.", flush=True)
-    with torch.inference_mode():
-        generated_ids = qwen_model.generate(**inputs, **generate_kwargs)
-
-    prompt_length = int(inputs["input_ids"].shape[1])
-    generated_trimmed = generated_ids[:, prompt_length:]
-    raw_text = processor.batch_decode(
-        generated_trimmed,
-        skip_special_tokens=True,
-        clean_up_tokenization_spaces=False,
-    )[0].strip()
-    print(f"[Qwen] Finished region '{region_id}'.", flush=True)
-
-    payload = _parse_payload_from_text(raw_text=raw_text, label=label)
-    return QwenRegionAnalysis(
-        region_id=region_id,
-        label=label,
-        model=model,
-        region_type=str(payload.get("region_type", _canonical_label(label))).strip(),
-        title_or_topic=str(payload.get("title_or_topic", "")).strip(),
-        summary=str(payload.get("summary", "")).strip(),
-        structured_content=str(payload.get("structured_content", "")).strip(),
-        key_points=[str(item).strip() for item in payload.get("key_points", []) if str(item).strip()],
-        visible_text=[str(item).strip() for item in payload.get("visible_text", []) if str(item).strip()],
-        raw_response_text=raw_text,
-        raw_payload=payload,
-    )
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+    )[0]
 
 
 def annotate_detections_with_qwen(
@@ -347,10 +479,12 @@ def annotate_detections_with_qwen(
     temperature: float = 0.1,
     save_crops_dir: str | Path | None = None,
     merge_into_content: bool = True,
+    batch_size: int = 1,
 ) -> list[QwenRegionAnalysis]:
     image_path = Path(image_path)
     supported = {_canonical_label(label) for label in labels}
     analyses: list[QwenRegionAnalysis] = []
+    prepared_items: list[tuple[int, dict[str, Any], Image.Image, str, str]] = []
 
     for index, detection in enumerate(detections):
         raw_label = str(detection.get("label", "region"))
@@ -376,24 +510,30 @@ def annotate_detections_with_qwen(
         )
         ocr_text = str(detection.get("content", "")).strip()
         region_id = str(detection.get("id") or f"region_{index:03d}")
-        analysis = analyze_region_with_qwen(
-            image=crop,
-            region_id=region_id,
-            label=raw_label,
-            ocr_text=ocr_text,
+        prepared_items.append((index, detection, crop, raw_label, ocr_text))
+
+    effective_batch_size = max(1, int(batch_size))
+    for start in range(0, len(prepared_items), effective_batch_size):
+        batch_items = prepared_items[start : start + effective_batch_size]
+        batch_analyses = analyze_regions_batch_with_qwen(
+            images=[item[2] for item in batch_items],
+            region_ids=[str(item[1].get("id") or f"region_{item[0]:03d}") for item in batch_items],
+            labels=[item[3] for item in batch_items],
+            ocr_texts=[item[4] for item in batch_items],
             model=model,
             device=device,
             dtype=dtype,
             max_new_tokens=max_new_tokens,
             temperature=temperature,
         )
-        analyses.append(analysis)
+        analyses.extend(batch_analyses)
 
-        detection["ocr_content"] = ocr_text
-        detection["qwen_analysis"] = analysis.to_payload()
-        detection["qwen_model"] = model
-        detection["qwen_text"] = analysis.to_graph_text(ocr_text=ocr_text)
-        if merge_into_content:
-            detection["content"] = detection["qwen_text"]
+        for (_, detection, _, _, ocr_text), analysis in zip(batch_items, batch_analyses):
+            detection["ocr_content"] = ocr_text
+            detection["qwen_analysis"] = analysis.to_payload()
+            detection["qwen_model"] = model
+            detection["qwen_text"] = analysis.to_graph_text(ocr_text=ocr_text)
+            if merge_into_content:
+                detection["content"] = detection["qwen_text"]
 
     return analyses

@@ -79,6 +79,7 @@ def _prepare_detections(
     qwen_max_new_tokens: int = 1024,
     qwen_temperature: float = 0.1,
     qwen_crops_dir: str | Path | None = None,
+    qwen_batch_size: int = 1,
 ) -> list[dict[str, Any]]:
     if layout_path is not None:
         detections = load_layout_detections(layout_path)
@@ -112,6 +113,7 @@ def _prepare_detections(
             temperature=qwen_temperature,
             save_crops_dir=qwen_crops_dir,
             merge_into_content=True,
+            batch_size=qwen_batch_size,
         )
 
     return detections
@@ -213,6 +215,7 @@ def run_document_pipeline(
     qwen_max_new_tokens: int = 1024,
     qwen_temperature: float = 0.1,
     qwen_crops_dir: str | Path | None = None,
+    qwen_batch_size: int = 1,
 ) -> DocumentPipelineResult:
     image_path = Path(image_path)
     ocr_path = Path(ocr_path)
@@ -241,6 +244,7 @@ def run_document_pipeline(
         qwen_max_new_tokens=qwen_max_new_tokens,
         qwen_temperature=qwen_temperature,
         qwen_crops_dir=qwen_crops_dir,
+        qwen_batch_size=qwen_batch_size,
     )
     original_regions = build_layout_regions(detections=detections, page_number=page_number)
     regions = expand_regions_with_lines(

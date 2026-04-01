@@ -12,6 +12,9 @@ from .config_model_embed import Qwen3VLEmbeddingConfig
 from .graph_store import save_graph_payload
 
 
+_EMBED_MODEL_CACHE: dict[tuple[str, str, str], tuple[Any, Any, str, Any]] = {}
+
+
 @dataclass(slots=True)
 class NodeEmbeddingRecord:
     row: int
@@ -91,6 +94,20 @@ class Qwen3VLNodeEmbedder:
             raise RuntimeError(
                 "Qwen3-VL embedding was requested on CUDA, but torch.cuda.is_available() is False."
             )
+        dtype_name = str(dtype).replace("torch.", "")
+        cache_key = (self.config.model, device, dtype_name)
+        cached = _EMBED_MODEL_CACHE.get(cache_key)
+        if cached is not None:
+            processor, model, cached_device, cached_dtype = cached
+            print(
+                f"[Embed] Reusing cached model: {self.config.model} on {cached_device} ({str(cached_dtype).replace('torch.', '')})",
+                flush=True,
+            )
+            self._processor = processor
+            self._model = model
+            self._device = cached_device
+            self._dtype = cached_dtype
+            return processor, model, cached_device
 
         print(f"[Embed] Loading processor: {self.config.model}", flush=True)
         processor = AutoProcessor.from_pretrained(
@@ -104,7 +121,7 @@ class Qwen3VLNodeEmbedder:
         )
         model = Qwen3VLForConditionalGeneration.from_pretrained(
             self.config.model,
-            torch_dtype=dtype,
+            dtype=dtype,
             trust_remote_code=True,
             low_cpu_mem_usage=True,
         )
@@ -115,6 +132,7 @@ class Qwen3VLNodeEmbedder:
         self._model = model
         self._device = device
         self._dtype = dtype
+        _EMBED_MODEL_CACHE[cache_key] = (processor, model, device, dtype)
         return processor, model, device
 
     def _format_text(self, text: str, instruction: str | None = None) -> str:
